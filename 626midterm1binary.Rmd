@@ -1,0 +1,135 @@
+---
+title: "626midterm1binary"
+output: html_notebook
+---
+### Task 1
+```{r}
+library(tidyverse)
+library(caret)
+```
+
+```{r}
+datatest <- read.table("test_data.txt", sep = "",header=TRUE)
+```
+
+```{r}
+set.seed(123)
+n_samples <- 3162
+activity <- sample(0:1, n_samples, replace = TRUE)
+feature1 <- runif(n_samples, min = 0, max = 10)
+feature2 <- runif(n_samples, min = 0, max = 5)
+feature3 <- runif(n_samples, min = 1, max = 3)
+
+datatest <- data.frame(activity, feature1, feature2, feature3)
+
+train_indices <- sample(1:n_samples, n_samples * 0.8) # 80% for training
+train_data <- datatest[train_indices, ]
+test_data <- datatest[-train_indices, ]
+
+#Logistic regression model
+model <- glm(activity ~ feature1 + feature2 + feature3, data = train_data, family = binomial(link = "logit"))
+
+predicted_probs <- predict(model, test_data, type = "response")
+predicted_labels <- as.numeric(predicted_probs > 0.5)
+
+# Evaluation
+accuracy <- sum(predicted_labels == test_data$activity) / nrow(test_data)
+cat("Accuracy: ", round(accuracy, 4), "\n")
+
+x_test <- model.matrix(activity ~ feature1 + feature2 + feature3, data = test_data)
+x_test_selected <- x_test[, selected_features, drop = FALSE]
+predicted_probs <- predict(model, newdata = as.data.frame(x_test_selected), type = "response")
+predicted_labels <- as.numeric(predicted_probs > 0.5)
+result <- data.frame(label = predicted_labels)
+#write.table(result, file = "predicted_labels.txt", row.names = FALSE, col.names = FALSE, quote = FALSE)
+```
+
+
+```{r}
+set.seed(123)
+n_samples <- 3162
+activity <- sample(0:1, n_samples, replace = TRUE)
+feature1 <- runif(n_samples, min = 0, max = 10)
+feature2 <- runif(n_samples, min = 0, max = 5)
+feature3 <- runif(n_samples, min = 1, max = 3)
+
+datatest <- data.frame(activity, feature1, feature2, feature3)
+
+train_indices <- sample(1:n_samples, n_samples * 0.8) # 80% for training
+train_data <- datatest[train_indices, ]
+test_data <- datatest[-train_indices, ]
+
+# Random Forest model
+model <- randomForest(activity ~ ., data = train_data, ntree = 500)
+predicted_labels <- predict(model, newdata = test_data)
+result <- data.frame(label = predicted_labels)
+# Calculate accuracy
+actual_labels <- test_data$activity
+accuracy <- sum(predicted_labels == actual_labels) / length(actual_labels)
+cat("Accuracy: ", round(accuracy * 100, 2), "%\n")
+```
+
+```{r}
+library(e1071)
+set.seed(123)
+train_indices <- sample(1:nrow(data), nrow(data)*0.8)
+train_data <- datatest[train_indices, ]
+test_data <- datatest[-train_indices, ]
+
+# SVM model
+model <- svm(activity ~ ., data = train_data, kernel = "radial", cost = 1)
+predictions <- predict(model, newdata = test_data)
+# Calculate accuracy
+accuracy <- sum(predictions == test_data$activity) / nrow(test_data)
+cat("Accuracy: ", round(accuracy, 4), "\n")
+#result <- data.frame(label = predictions)
+#write.csv(result, file = "predictions.csv", row.names = FALSE)
+
+```
+
+```{r}
+install.packages("gbm")
+library(gbm)
+
+set.seed(123) 
+train_indices <- sample(1:nrow(datatest), nrow(datatest)*0.7)  
+train_data <- datatest[train_indices, ]
+test_data <- datatest[-train_indices, ]
+
+train_features <- train_data[, -ncol(train_data)]  
+train_labels <- train_data$subject
+test_features <- test_data[, -ncol(test_data)]  
+test_labels <- test_data$subject
+
+# GBM model 
+gbm_model <- gbm(
+  formula = subject ~ .,
+  data = train_data,
+  distribution = "bernoulli",  
+  n.trees = 5000,  
+  interaction.depth = 4,  
+  shrinkage = 0.1, 
+  bag.fraction = 0.5,  
+  train.fraction = 0.7,  
+  n.minobsinnode = 10,  
+  cv.folds = 5,  
+  verbose = FALSE,  
+  keep.data = TRUE
+)
+
+best.iter <- gbm.perf(gbm_model, method = "cv")
+gbm_pred <- predict(gbm_model, newdata = test_data, n.trees = best.iter)
+gbm_pred_label <- ifelse(gbm_pred > 0.5, 1, 0)
+# Calculate accuracy
+accuracy <- sum(gbm_pred_label == test_labels) / length(test_labels)
+cat("Accuracy: ", round(accuracy, 2), "\n")
+all_features <- datatest[, -ncol(datatest)]  
+all_pred <- predict(gbm_model, newdata = all_features, n.trees = best.iter)
+all_pred_label <- ifelse(all_pred > 0.5, 1, 0)
+
+results <- data.frame(all_pred_label)
+
+# Write predicted labels to a tab-separated text file without column names
+write.table(results, file = "gbm_predictions.txt", sep = "\t", row.names = FALSE, col.names = FALSE)
+
+```

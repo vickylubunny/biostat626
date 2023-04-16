@@ -1,0 +1,60 @@
+---
+title: "626midterm1multi"
+output: html_notebook
+---
+### Task 2
+```{r}
+library(kernlab)
+library(class)
+```
+
+```{r}
+datatest <- read.table("test_data.txt", sep = "",header=TRUE)
+```
+
+```{r}
+set.seed(123) 
+train_indices <- sample(1:nrow(datatest), nrow(datatest)*0.7)
+train_data <- datatest[train_indices, ]
+test_data <- datatest[-train_indices, ]
+
+# SVM model
+model <- ksvm(subject ~ ., data = train_data, type = "C-svc", kernel = "rbfdot")
+predictions <- predict(model, test_data)
+predictions <- as.integer(predictions)
+predictions <- predictions[predictions >= 1 & predictions <= 7]
+predicted_data <- data.frame(subject = test_data$subject, predicted_labels = NA)
+predicted_data$predicted_labels[complete.cases(test_data)] <- predictions
+write.table(predicted_data$predicted_labels, file = "2multitrylabel.txt", row.names = FALSE, col.names = FALSE)
+
+# Calculate accuracy
+accuracy <- sum(predictions == test_data$subject) / length(predictions)
+cat("Accuracy: ", round(accuracy, 4), "\n")
+
+```
+
+```{r}
+set.seed(123) 
+train_indices <- sample(1:nrow(datatest), nrow(datatest)*0.7)
+train_data <- datatest[train_indices, ]
+test_data <- datatest[-train_indices, ]
+
+# k-NN model
+model <- knn(train = train_data[, -1], test = test_data[, -1], cl = train_data$subject, k = 5)
+predictions <- as.integer(as.factor(model))
+predictions <- predictions[predictions >= 1 & predictions <= 7]
+
+if (length(predictions) < nrow(test_data)) {
+  diff_len <- nrow(test_data) - length(predictions)
+  predictions <- c(predictions, rep(NA, diff_len))
+}
+
+predicted_data <- data.frame(subject = test_data$subject, predicted_labels = predictions)
+
+write.table(predicted_data, file = "multitrylabel.txt", row.names = FALSE, col.names = TRUE, sep = "\t")
+
+# Calculate accuracy
+accuracy <- sum(predictions == test_data$subject, na.rm = TRUE) / nrow(test_data)
+cat("Accuracy: ", round(accuracy, 4), "\n")
+```
+
